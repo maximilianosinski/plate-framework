@@ -11,6 +11,11 @@ class BinaryResponse {
         $this->contentType = $contentType;
     }
 
+    /**
+     * Prints out the given binary data.
+     * @param int $status
+     * @return void
+     */
     public function echo(int $status = 200): void
     {
         header("HTTP/1.1 $status");
