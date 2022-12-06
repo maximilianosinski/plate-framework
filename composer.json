@@ -1,0 +1,19 @@
+{
+    "name": "plate/plate-framework",
+    "description": "Plate is a PHP framework for making fast & reliable REST API's.",
+    "type": "library",
+    "license": "Apache-2.0 license",
+    "autoload": {
+        "psr-4": {
+            "Plate\\PlateFramework\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Maximilian Osinski",
+            "email": "maximilianosinski@maxeman.com"
+        }
+    ],
+    "minimum-stability": "beta",
+    "require": {}
+}
