@@ -35,6 +35,6 @@ class Response {
             "code" => $this->code,
             "message" => $this->message,
             "data" => $this->data
-        ), JSON_PRETTY_PRINT || JSON_NUMERIC_CHECK));
+        ), JSON_PRETTY_PRINT));
     }
 }

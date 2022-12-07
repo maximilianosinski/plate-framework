@@ -15,5 +15,7 @@
         }
     ],
     "minimum-stability": "beta",
-    "require": {}
+    "require": {
+      "ext-pdo": "*"
+    }
 }

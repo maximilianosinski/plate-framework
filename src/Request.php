@@ -6,15 +6,15 @@ class Request {
     public ?string $useragent;
     public string $method;
     public ?array $headers;
-    public ?AuthenticationHeader $authenticationHeader;
+    public ?AuthenticationHeader $authentication_header;
 
-    private function __construct(string $ip, ?string $useragent, string $method, ?array $headers, ?AuthenticationHeader $authenticationHeader = null)
+    private function __construct(string $ip, ?string $useragent, string $method, ?array $headers, ?AuthenticationHeader $authentication_header = null)
     {
         $this->ip = $ip;
         $this->useragent = $useragent;
         $this->method = $method;
         $this->headers = $headers;
-        $this->authenticationHeader = $authenticationHeader;
+        $this->authentication_header = $authentication_header;
     }
 
     /**
@@ -38,10 +38,10 @@ class Request {
         } else if(array_key_exists("authentication", array_change_key_case($headers))) {
             $authHeaderType = "authentication";
         }
-        $authenticationHeaders = null;
+        $authentication_header = null;
         if(!empty($authHeaderType)) {
-            $authenticationHeaders = AuthenticationHeader::current($authHeaderType);
+            $authentication_header = AuthenticationHeader::current($authHeaderType);
         }
-        return new Request($ip, $useragent, $method, $headers, $authenticationHeaders);
+        return new Request($ip, $useragent, $method, $headers, $authentication_header);
     }
 }
