@@ -17,7 +17,7 @@ class AuthenticationHeader {
      * @param string $header Can be "Authentication" or "Authorization".
      * @return AuthenticationHeader|null Returns null if the Header is missing or invalid.
      */
-    public static function current(string $header = "Authentication"): ?AuthenticationHeader
+    public static function current(string $header = "Authentication"): ?self
     {
         if(strtolower($header) == "authentication" || strtolower($header) == "authorization") {
             $headers = array_change_key_case(getallheaders());
@@ -33,7 +33,7 @@ class AuthenticationHeader {
                     } else {
                         $value = $headerValues[1];
                     }
-                    return new AuthenticationHeader($scheme, $value);
+                    return new self($scheme, $value);
                 }
             }
         }

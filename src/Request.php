@@ -21,7 +21,7 @@ class Request {
      * Returns the current request.
      * @return Request
      */
-    public static function current(): Request
+    public static function current(): self
     {
         if (!empty($_SERVER["HTTP_CLIENT_IP"])) {
             $ip = $_SERVER["HTTP_CLIENT_IP"];
@@ -42,6 +42,6 @@ class Request {
         if(!empty($authHeaderType)) {
             $authentication_header = AuthenticationHeader::current($authHeaderType);
         }
-        return new Request($ip, $useragent, $method, $headers, $authentication_header);
+        return new self($ip, $useragent, $method, $headers, $authentication_header);
     }
 }
