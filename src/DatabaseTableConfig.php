@@ -7,11 +7,12 @@ class DatabaseTableConfig {
     (
         "AUTH_TOKENS" => "authentication_tokens",
         "ACCOUNTS" => "accounts",
-        "MAIL_OPT" => "mail_opt"
+        "MAIL_VERIFICATION" => "mail_verification"
     );
 
-    public function setKey(string $key, string $value): void
+    public function setKey(string $key, string $value): bool
     {
         $this->tableKeys[$key] = $value;
+        return true;
     }
 }
