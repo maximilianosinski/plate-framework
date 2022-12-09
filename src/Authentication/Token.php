@@ -2,7 +2,7 @@
 namespace Plate\PlateFramework\Authentication;
 
 use Plate\PlateFramework\Database;
-use Plate\PlateFramework\Exceptions\NotFoundException;
+use Plate\PlateFramework\Exceptions\UnauthorizedException;
 
 class Token {
     private Database $database;
@@ -38,30 +38,34 @@ class Token {
     }
 
     /**
-     * Deletes all expired authentication tokens.
-     * @param Database $database
-     * @return void
-     */
-    private static function evaluateAll(Database $database): void
-    {
-        $query = "DELETE FROM ".$database->databaseTableConfig["AUTH_TOKENS"]." WHERE expires < NOW()";
-        $database->execute($query);
-    }
-
-    /**
      * Fetches an authentication token.
      * @param Database $database
      * @param string $token
      * @return static
-     * @throws NotFoundException
+     * @throws UnauthorizedException
      */
     public static function fetch(Database $database, string $token): self
     {
-        self::evaluateAll($database);
         $query = "SELECT * FROM ".$database->databaseTableConfig["AUTH_TOKENS"]." WHERE token = :token";
         if($result = $database->fetch($query, ["token" => $token])) {
             return new self($database, $token, $result->value, strtotime($result->expires));
-        } throw new NotFoundException("Authentication Token not found.");
+        } throw new UnauthorizedException("Invalid Authentication Token.");
+    }
+
+    /**
+     * Refreshes an authentication token.
+     * @return bool
+     * @throws UnauthorizedException
+     */
+    public function refresh(): bool
+    {
+        $token = self::fetch($this->database, $this->token);
+        self::delete();
+        $token = self::create($token->database, $token->value);
+        $this->token = $token->token;
+        $this->value = $token->value;
+        $this->expires = $token->expires;
+        return true;
     }
 
     /**
@@ -70,7 +74,24 @@ class Token {
      */
     public function delete(): bool
     {
+        $this->token = null;
+        $this->value = null;
+        $this->expires = 0;
         return $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["AUTH_TOKENS"]." WHERE token = :token");
     }
 
+    /**
+     * Validates the given authentication token.
+     * @param Database $database
+     * @param string $token
+     * @return string Returns on success the value of the token.
+     * @throws UnauthorizedException
+     */
+    public static function validate(Database $database, string $token): string
+    {
+        $token_object = self::fetch($database, $token);
+        if(time() < $token_object->expires) {
+            return $token_object->value;
+        } throw new UnauthorizedException("Invalid Authentication Token.");
+    }
 }
