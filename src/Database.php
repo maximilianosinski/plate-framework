@@ -3,8 +3,8 @@ namespace Plate\PlateFramework;
 
 class Database {
     private \PDO $pdo;
-    public DatabasePropertyConfig $databaseTableConfig;
-    private function __construct(DatabasePropertyConfig $databaseTableConfig, \PDO $pdo)
+    public DatabaseTableConfig $databaseTableConfig;
+    private function __construct(DatabaseTableConfig $databaseTableConfig, \PDO $pdo)
     {
         $this->databaseTableConfig = $databaseTableConfig;
         $this->pdo = $pdo;
@@ -12,14 +12,14 @@ class Database {
 
     /**
      * Returns a database object.
-     * @param DatabasePropertyConfig $databaseTableConfig
+     * @param DatabaseTableConfig $databaseTableConfig
      * @param string $host
      * @param string $database
      * @param string $username
      * @param string $password
      * @return static
      */
-    public static function connect(DatabasePropertyConfig $databaseTableConfig, string $host, string $database, string $username, string $password = ""): self
+    public static function connect(DatabaseTableConfig $databaseTableConfig, string $host, string $database, string $username, string $password = ""): self
     {
         $dsn = "mysql:host=$host;dbname=$database";
         $pdo = new \PDO($dsn, $username, $password);
