@@ -8,12 +8,9 @@ use Plate\PlateFramework\Exceptions\NotFoundException;
 class Email {
 
     public string $uuid;
-    public bool $confirmed;
-
-    private function __construct(string $uuid, bool $confirmed)
+    private function __construct(string $uuid)
     {
         $this->uuid = $uuid;
-        $this->confirmed = $confirmed;
     }
 
     public static function validate(string $email): bool
@@ -37,6 +34,7 @@ class Email {
     }
 
     /**
+     * Fetches an email address.
      * @param Database $database
      * @param string $email
      * @return static
@@ -47,7 +45,7 @@ class Email {
     {
         if(!self::validate($email)) throw new BadRequestException("Invalid E-Mail address.");
         if($result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["ACCOUNTS"]." WHERE email = :email", ["email" => $email])) {
-            return new self($result->uuid, $result->confirmed);
+            return new self($result->uuid);
         } throw new NotFoundException("E-Mail doesn't exist.");
     }
 }

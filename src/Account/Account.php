@@ -8,6 +8,7 @@ use Plate\PlateFramework\Exceptions\ConflictException;
 use Plate\PlateFramework\Exceptions\ForbiddenException;
 use Plate\PlateFramework\Exceptions\InternalServerException;
 use Plate\PlateFramework\Exceptions\NotFoundException;
+use Plate\PlateFramework\MailClient;
 
 class Account {
 
@@ -172,5 +173,52 @@ class Account {
             $this->details->password = $password;
             return true;
         } throw new InternalServerException("Couldn't set password.");
+    }
+
+    /**
+     * Confirms the current email address.
+     * @param MailClient|null $mailClient
+     * @param int|null $code
+     * @return bool
+     * @throws ConflictException
+     * @throws ForbiddenException
+     * @throws InternalServerException
+     * @throws NotFoundException
+     */
+    public function confirm(?MailClient $mailClient, ?int $code): bool
+    {
+        if($this->details->confirmed) throw new ConflictException("E-Mail already confirmed.");
+        if(empty($code)) {
+            $query = "DELETE FROM ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]." WHERE email : email";
+            $this->database->execute($query, ["email" => $this->details->email]);
+            if(empty($mailClient)) throw new InternalServerException("No mail client specified.");
+            $confirmation_code = rand(100000, 999999);
+            $query = "INSERT INTO ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]."(email, code) VALUES(:email, :code)";
+            $result = $this->database->execute($query, ["email" => $this->details->email, "code" => $confirmation_code]);
+            if($result) {
+                $mailBody = "";
+                if(!empty($this->details->first_name) && !empty($this->details->last_name)) {
+                    $mailBody .= "Hello ".$this->details->first_name." ".$this->details->last_name.",\n";
+                }
+                $mailBody .= "<p>To confirm your email address enter the following code: <strong style='font-size: large'>$confirmation_code</strong></p>.";
+                return $mailClient->sendMail($this->details->email, "Confirm your E-Mail address.", $mailBody);
+            } throw new InternalServerException("Couldn't confirm email.");
+        }
+
+        $query = "SELECT * FROM ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]." WHERE email = :email";
+        $result = $this->database->fetch($query, ["email" => $this->details->email]);
+        if($result) {
+            if($code == $result->code) {
+                $query = "DELETE FROM ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]." WHERE email : email";
+                $this->database->execute($query, ["email" => $this->details->email]);
+
+                $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET confirmed = true WHERE uuid = :uuid";
+                $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
+                if($result) {
+                    $this->details->confirmed = true;
+                    return true;
+                } throw new InternalServerException("Couldn't confirm email address.");
+            } throw new ForbiddenException("Invalid confirmation code.");
+        } throw new NotFoundException("No valid confirmation code found.");
     }
 }
