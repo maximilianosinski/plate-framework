@@ -119,13 +119,13 @@ class Account {
     }
 
     /**
-     * Unsets a property for the current account.
+     * Clear a property for the current account.
      * @param string $property
      * @return bool
      * @throws BadRequestException
      * @throws InternalServerException
      */
-    public function unsetProperty(string $property): bool
+    public function clearProperty(string $property): bool
     {
         if(!property_exists(Details::class, $property)) {
             $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET $property = null WHERE uuid = :uuid";
@@ -176,7 +176,7 @@ class Account {
     }
 
     /**
-     * Confirms the current email address.
+     * Confirm the current email address.
      * @param MailClient|null $mailClient
      * @param int|null $code
      * @return bool
@@ -220,5 +220,20 @@ class Account {
                 } throw new InternalServerException("Couldn't confirm email address.");
             } throw new ForbiddenException("Invalid confirmation code.");
         } throw new NotFoundException("No valid confirmation code found.");
+    }
+
+    /**
+     * Unconfirm the current email address.
+     * @return bool
+     * @throws InternalServerException
+     */
+    public function unconfirm(): bool
+    {
+        $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET confirmed = false WHERE uuid = :uuid";
+        $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
+        if($result) {
+            $this->details->confirmed = false;
+            return true;
+        } throw new InternalServerException("Couldn't unconfirm email address.");
     }
 }
