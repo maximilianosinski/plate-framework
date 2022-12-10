@@ -10,21 +10,14 @@ use Plate\PlateFramework\Exceptions\InternalServerException;
 use Plate\PlateFramework\Exceptions\NotFoundException;
 
 class Account {
-    public string $uuid;
-    public ?string $first_name;
-    public ?string $last_name;
-    public string $email;
-    public bool $confirmed;
-    public string $password;
 
-    private function __construct(string $uuid, ?string $first_name, ?string $last_name, string $email, bool $confirmed, string $password)
+    public Details $details;
+    public object $data;
+
+    private function __construct(Details $details, object $data)
     {
-        $this->uuid = $uuid;
-        $this->first_name = $first_name;
-        $this->last_name = $last_name;
-        $this->email = $email;
-        $this->confirmed = $confirmed;
-        $this->password = $password;
+        $this->details = $details;
+        $this->data = $data;
     }
 
     /**
@@ -35,9 +28,10 @@ class Account {
      * @param string $email
      * @param string $password
      * @return static
+     * @throws BadRequestException
      * @throws ConflictException
      * @throws InternalServerException
-     * @throws BadRequestException
+     * @throws NotFoundException
      */
     public static function create(Database $database, ?string $first_name, ?string $last_name, string $email, string $password): self
     {
@@ -47,7 +41,7 @@ class Account {
         $query = "INSERT INTO ".$database->databaseTableConfig["ACCOUNTS"]."(uuid, first_name, last_name, email, confirmed, password) VALUES(:uuid, :first_name, :last_name, :email, false, :password)";
         $result = $database->execute($query, ["uuid" => $uuid, "first_name" => $first_name, "last_name" => $last_name, "email" => $email, "password" => $password]);
         if($result) {
-            return new self($uuid, $first_name, $last_name, $email, false, $password);
+            return self::fetch($database, $uuid);
         } throw new InternalServerException("Couldn't create account.");
     }
 
@@ -84,7 +78,17 @@ class Account {
     public static function fetch(Database $database, string $uuid): self
     {
         if($result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["ACCOUNTS"]." WHERE uuid = :uuid", ["uuid" => $uuid])) {
-            return new self($result->uuid, $result->first_name, $result->last_name, $result->email, $result->confirmed, $result->password);
+            $details = Details::build($result);
+
+            // Remove detail properties.
+            unset($result->uuid);
+            unset($result->first_name);
+            unset($result->last_name);
+            unset($result->email);
+            unset($result->confirmed);
+            unset($result->password);
+
+            return new self($details, $result);
         } throw new NotFoundException("Account doesn't exist.");
     }
 }
