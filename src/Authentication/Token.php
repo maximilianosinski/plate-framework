@@ -1,6 +1,7 @@
 <?php
 namespace Plate\PlateFramework\Authentication;
 
+use Exception;
 use Plate\PlateFramework\Database;
 use Plate\PlateFramework\Exceptions\UnauthorizedException;
 
@@ -22,15 +23,11 @@ class Token {
      * @param Database $database
      * @param string $value
      * @return bool|static
+     * @throws Exception
      */
     public static function create(Database $database, string $value): self|bool
     {
-        $characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        $characters_length = strlen($characters);
-        $token_string = "";
-        for ($i = 0; $i < 64; $i++) {
-            $token_string .= $characters[rand(0, $characters_length - 1)];
-        }
+        $token_string = bin2hex(random_bytes(16));
         $query = "INSERT INTO ".$database->databaseTableConfig["AUTH_TOKENS"]."(token, value, expires) VALUES(:token, :value, NOW() + INTERVAL 1 DAY)";
         if($database->execute($query, ["token" => $token_string, "value" => $value])) {
             return new self($database, $token_string, $value, time() + 86400);
@@ -56,6 +53,7 @@ class Token {
      * Refreshes an authentication token.
      * @return bool
      * @throws UnauthorizedException
+     * @throws Exception
      */
     public function refresh(): bool
     {
