@@ -9,8 +9,9 @@ class Details {
     public string $email;
     public bool $confirmed;
     public string $password;
+    public array $hosts;
 
-    private function __construct(string $uuid, ?string $first_name, ?string $last_name, string $email, bool $confirmed, string $password)
+    private function __construct(string $uuid, ?string $first_name, ?string $last_name, string $email, bool $confirmed, string $password, array $hosts)
     {
         $this->uuid = $uuid;
         $this->first_name = $first_name;
@@ -18,10 +19,11 @@ class Details {
         $this->email = $email;
         $this->confirmed = $confirmed;
         $this->password = $password;
+        $this->hosts = $hosts;
     }
 
     public static function build(object $information): self
     {
-        return new Details($information->uuid, $information->first_name, $information->last_name, $information->email, $information->confirmed, $information->password);
+        return new Details($information->uuid, $information->first_name, $information->last_name, $information->email, $information->confirmed, $information->password, json_decode($information->hosts, true));
     }
 }

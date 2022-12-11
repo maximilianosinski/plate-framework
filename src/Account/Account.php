@@ -11,6 +11,7 @@ use Plate\PlateFramework\Exceptions\InternalServerException;
 use Plate\PlateFramework\Exceptions\NotFoundException;
 use Plate\PlateFramework\Exceptions\UnauthorizedException;
 use Plate\PlateFramework\MailClient;
+use Plate\PlateFramework\Request;
 
 class Account {
 
@@ -56,23 +57,99 @@ class Account {
      * @param Database $database
      * @param string $email
      * @param string $password
+     * @param MailClient|null $mailClient
+     * @param int|null $code
      * @return Token
      * @throws BadRequestException
      * @throws ConflictException
      * @throws ForbiddenException
      * @throws InternalServerException
+     * @throws NotFoundException
      * @throws Exception
      */
-    public static function login(Database $database, string $email, string $password): Token
+    public static function login(Database $database, string $email, string $password, ?MailClient $mailClient, ?int $code = 0): Token
     {
         if(!Email::exists($database, $email)) throw new ConflictException("Account doesn't exists.");
         $query = "SELECT * FROM".$database->databaseTableConfig["ACCOUNTS"]." WHERE email = :email";
         $result = $database->fetch($query, ["email" => $email]);
         if($result) {
             if(password_verify($password, $result->password)) {
-                return Token::create($database, $result->uuid);
+                $hosts = json_decode($result->hosts, true);
+                $request = Request::current();
+                if(in_array($request->ip, $hosts)) {
+                    return Token::create($database, $result->uuid);
+                }
+                if(empty($code)) {
+                    if(!empty($mailClient)) {
+                        $database->execute("DELETE FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE host = :host", ["host" => $request->ip]);
+                        $account = self::fetch($database, $result->uuid);
+                        $code = rand(100000, 999999);
+                        $query = "INSERT INTO ".$database->databaseTableConfig["HOST_VERIFICATION"]."(uuid, host, code, expires) VALUES(:uuid, :host, :code, NOW() + INTERVAL 10 MINUTE)";
+                        $result = $database->execute($query, ["uuid" => $account->details->uuid, "host" => $request->ip, "code" => $code]);
+                        if($result) {
+                            $mailBody = "";
+                            if(!empty($account->details->first_name) && !empty($account->details->last_name)) {
+                                $mailBody .= "Hello ".$account->details->first_name." ".$account->details->last_name.",\n";
+                            }
+                            $mailBody .= "<p>Someone has tried to log into your account from an unknown location. Enter the following code to confirm the login.<br><strong style='font-size: large'>$code</strong></p>.";
+                            $mailClient->sendMail($account->details->email, "Confirm login.", $mailBody);
+                            throw new ForbiddenException("This is an unknown location, an email with a confirmation code has been sent to you.");
+                        } throw new InternalServerException("Couldn't create host confirmation code.");
+                    } throw new BadRequestException("No mail client specified.");
+                }
+
+                $database->execute("DELETE FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE expires < NOW()");
+                $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE code = :code", ["code" => $code]);
+                if($result) {
+                    $database->execute("DELETE FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE code = :code", ["code" => $code]);
+                    $account = self::fetch($database, $result->uuid);
+                    $result = $account->addHost($result->host);
+                    if($result) {
+                        return Token::create($database, $account->details->uuid);
+                    } throw new InternalServerException("Couldn't add host.");
+                } throw new ForbiddenException("Invalid confirmation code.");
             } throw new ForbiddenException("Incorrect password.");
         } throw new InternalServerException("Couldn't login.");
+    }
+
+    /**
+     * Adds a host for the current account.
+     * @param string $host
+     * @return bool
+     * @throws InternalServerException
+     */
+    public function addHost(string $host): bool
+    {
+        $hosts = $this->details->hosts;
+        if(in_array($host, $hosts)) {
+            return true;
+        }
+
+        $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
+        if($result) {
+            $this->details->hosts = $hosts;
+            return true;
+        } throw new InternalServerException("Couldn't add host.");
+    }
+
+    /**
+     * Removes a host of the current account.
+     * @param string $host
+     * @return bool
+     * @throws InternalServerException
+     * @throws NotFoundException
+     */
+    public function removeHost(string $host): bool
+    {
+        $hosts = $this->details->hosts;
+        if(in_array($host, $hosts)) {
+            unset($hosts[$host]);
+            $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
+            if($result) {
+                $this->details->hosts = $hosts;
+                return true;
+            } throw new InternalServerException("Couldn't remove host.");
+        } throw new NotFoundException("Host not found.");
     }
 
     /**
@@ -94,6 +171,7 @@ class Account {
             unset($result->email);
             unset($result->confirmed);
             unset($result->password);
+            unset($result->hosts);
 
             return new self($database, $details, $result);
         } throw new NotFoundException("Account doesn't exist.");
@@ -282,7 +360,7 @@ class Account {
         }
         if(!empty($password)) {
             if(strlen($password) >= 8) {
-                $database->execute("DELETE FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE NOW() > expires");
+                $database->execute("DELETE FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE expires < NOW()");
                 $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE token = :token", ["token" => $token]);
                 if($result) {
                     $database->execute("DELETE FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $uuid]);
@@ -330,7 +408,7 @@ class Account {
                 } throw new BadRequestException("No Referrer given.");
             } throw new BadRequestException("No mail client specified.");
         }
-        $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE NOW() > expires");
+        $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE expires < NOW()");
         $result = $this->database->fetch("SELECT * FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE token = :token", ["token" => $token]);
         if($result) {
             $result = self::setEmail($result->new_email);
