@@ -192,7 +192,7 @@ class Account {
                 $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET $property = :value WHERE uuid = :uuid";
                 $result = $this->database->execute($query, ["value" => $value, "uuid" => $this->details->uuid]);
                 if($result) {
-                    $this->data[$property] = $value;
+                    $this->data->$property = $value;
                     return true;
                 } throw new InternalServerException("Couldn't set property.");
             } throw new BadRequestException("Can't set property with empty value.");
@@ -212,9 +212,28 @@ class Account {
             $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET $property = null WHERE uuid = :uuid";
             $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
             if($result) {
-                unset($this->data[$property]);
+                unset($this->data->$property);
                 return true;
             } throw new InternalServerException("Couldn't unset property.");
+        } throw new BadRequestException("Can't access detail properties.");
+    }
+
+    /**
+     * Gets a property for the current account.
+     * Note: Just access it through the object.
+     * @param string $property
+     * @return mixed
+     * @throws BadRequestException
+     * @throws InternalServerException
+     */
+    public function getProperty(string $property): mixed
+    {
+        if(!property_exists(Details::class, $property)) {
+            $query = "SELECT * FROM ".$this->database->databaseTableConfig["ACCOUNTS"]." WHERE uuid = :uuid";
+            $result = $this->database->fetch($query, ["uuid" => $this->details->uuid]);
+            if($result) {
+                return $result->$property;
+            } throw new InternalServerException("Couldn't get property.");
         } throw new BadRequestException("Can't access detail properties.");
     }
 
