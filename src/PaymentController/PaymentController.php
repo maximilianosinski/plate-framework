@@ -51,9 +51,9 @@ class PaymentController {
     /**
      * Returns a PayPal Order by a Order Token.
      * @param string $order_token
-     * @return object
+     * @return OrderResponse
      */
-    public function getOrder(string $order_token): object
+    public function getOrder(string $order_token): OrderResponse
     {
         return $this->orderRequest($order_token, false);
     }
@@ -61,13 +61,13 @@ class PaymentController {
     /**
      * Captures a PayPal Order by an Order Token.
      * @param string $order_token
-     * @return object
+     * @return OrderResponse
      */
-    public function captureOrder(string $order_token): object
+    public function captureOrder(string $order_token): OrderResponse
     {
         return $this->orderRequest($order_token, true);
     }
-    private function orderRequest(string $order_token, bool $capture): object
+    private function orderRequest(string $order_token, bool $capture): OrderResponse
     {
         $trailing = "";
         if($capture) {
@@ -85,7 +85,8 @@ class PaymentController {
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
         $resp = curl_exec($curl);
         curl_close($curl);
-        return json_decode($resp, true);
+        $json = json_decode($resp, true);
+        return new OrderResponse($json["status"], $json["purchase_units"], $json);
     }
 
     /**

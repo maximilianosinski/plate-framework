@@ -4,7 +4,6 @@ namespace Plate\PlateFramework\PaymentController;
 class OrderDetails {
     public string $link;
     public string $order_token;
-
     public function __construct(string $link, string $order_token)
     {
         $this->link = $link;
