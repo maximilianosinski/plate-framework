@@ -13,6 +13,7 @@ use Plate\PlateFramework\Exceptions\UnauthorizedException;
 use Plate\PlateFramework\MailChangedResult;
 use Plate\PlateFramework\MailClient;
 use Plate\PlateFramework\MailConfirmResult;
+use Plate\PlateFramework\PasswordChangedResult;
 use Plate\PlateFramework\Request;
 
 class Account {
@@ -353,14 +354,14 @@ class Account {
      * @param string|null $token
      * @param string|null $uuid
      * @param string|null $password
-     * @return bool
+     * @return PasswordChangedResult
      * @throws BadRequestException
      * @throws InternalServerException
      * @throws NotFoundException
      * @throws UnauthorizedException
      * @throws Exception
      */
-    public static function changePassword(Database $database, ?MailClient $mailClient, ?string $referrer, ?string $token, ?string $uuid, ?string $password): bool
+    public static function changePassword(Database $database, ?MailClient $mailClient, ?string $referrer, ?string $token, ?string $uuid, ?string $password): PasswordChangedResult
     {
         if(empty($token)) {
             if(!empty($mailClient)) {
@@ -379,7 +380,10 @@ class Account {
                             }
                             $link = "$referrer?token=$token";
                             $mailBody .= "<p>To reset your password, click the following link.<br><a href='$link'>$link</a></p>.";
-                            return $mailClient->sendMail($account->details->email, "Reset your password.", $mailBody);
+                            $result = $mailClient->sendMail($account->details->email, "Reset your password.", $mailBody);
+                            if($result) {
+                                return new PasswordChangedResult(false, true);
+                            } throw new InternalServerException("Couldn't send password reset email.");
                         } throw new InternalServerException("Couldn't create password reset token.");
                     } throw new BadRequestException("No Referrer given.");
                 } throw new BadRequestException("No UUID specified.");
@@ -392,7 +396,8 @@ class Account {
                 if($result) {
                     $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["RESET_PASSWORD_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $uuid]);
                     $account = self::fetch($database, $result->uuid);
-                    return $account->setPassword($password);
+                    $account->setPassword($password);
+                    return new PasswordChangedResult(true, false);
                 } throw new UnauthorizedException("Invalid password reset token.");
             } throw new BadRequestException("Password is too short.");
         } throw new BadRequestException("No password given.");
@@ -409,6 +414,7 @@ class Account {
      * @throws ConflictException
      * @throws InternalServerException
      * @throws UnauthorizedException
+     * @throws Exception
      */
     public function changeEmail(?MailClient $mailClient, ?string $referrer, ?string $token, ?string $new_email): MailChangedResult
     {
