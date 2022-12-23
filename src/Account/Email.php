@@ -30,7 +30,11 @@ class Email {
     public static function exists(Database $database, string $email): bool
     {
         if(!self::validate($email)) throw new BadRequestException("Invalid E-Mail address.");
-        return $database->fetch("SELECT * FROM ".$database->databaseTableConfig["ACCOUNTS"]." WHERE email = :email", ["email" => $email]);
+        $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE email = :email", ["email" => $email]);
+        if($result) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -44,7 +48,7 @@ class Email {
     public static function fetch(Database $database, string $email): self
     {
         if(!self::validate($email)) throw new BadRequestException("Invalid E-Mail address.");
-        if($result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["ACCOUNTS"]." WHERE email = :email", ["email" => $email])) {
+        if($result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE email = :email", ["email" => $email])) {
             return new self($result->uuid);
         } throw new NotFoundException("E-Mail doesn't exist.");
     }

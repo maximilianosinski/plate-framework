@@ -53,6 +53,9 @@ class Route
             }
             $route["expression"] = "^" . $route["expression"];
             $route["expression"] = $route["expression"] . "$";
+            if(str_contains($path, "/plate-framework/syneptic-rest-api")) {
+                $path = str_replace("/plate-framework/syneptic-rest-api", "", $path);
+            }
             if (preg_match("#" . $route["expression"] . "#", $path, $matches)) {
                 $path_match_found = true;
                 if (strtolower($method) == strtolower($route["method"])) {

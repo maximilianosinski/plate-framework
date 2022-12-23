@@ -27,8 +27,8 @@ class Token {
      */
     public static function create(Database $database, string $value): self|bool
     {
-        $token_string = bin2hex(random_bytes(16));
-        $query = "INSERT INTO ".$database->databaseTableConfig["AUTH_TOKENS"]."(token, value, expires) VALUES(:token, :value, NOW() + INTERVAL 1 DAY)";
+        $token_string = bin2hex(random_bytes(48));
+        $query = "INSERT INTO ".$database->databaseTableConfig->tableKeys["AUTH_TOKENS"]."(token, value, expires) VALUES(:token, :value, NOW() + INTERVAL 1 DAY)";
         if($database->execute($query, ["token" => $token_string, "value" => $value])) {
             return new self($database, $token_string, $value, time() + 86400);
         } return false;
@@ -43,7 +43,7 @@ class Token {
      */
     public static function fetch(Database $database, string $token): self
     {
-        $query = "SELECT * FROM ".$database->databaseTableConfig["AUTH_TOKENS"]." WHERE token = :token";
+        $query = "SELECT * FROM ".$database->databaseTableConfig->tableKeys["AUTH_TOKENS"]." WHERE token = :token";
         if($result = $database->fetch($query, ["token" => $token])) {
             return new self($database, $token, $result->value, strtotime($result->expires));
         } throw new UnauthorizedException("Invalid Authentication Token.");
@@ -75,7 +75,7 @@ class Token {
         $this->token = null;
         $this->value = null;
         $this->expires = 0;
-        return $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["AUTH_TOKENS"]." WHERE token = :token");
+        return $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig->tableKeys["AUTH_TOKENS"]." WHERE token = :token");
     }
 
     /**

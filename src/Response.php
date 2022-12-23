@@ -14,7 +14,7 @@ class Response {
      * @param string $message
      * @param mixed $data The result of the targeted endpoint or function.
      */
-    public function __construct(int $status, int $code, string $message, mixed $data = array())
+    public function __construct(int $code, int $status, string $message, mixed $data = array())
     {
         $this->status = $status;
         $this->code = $code;

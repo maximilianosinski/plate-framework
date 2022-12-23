@@ -38,14 +38,15 @@ class Account {
      * @throws ConflictException
      * @throws InternalServerException
      * @throws NotFoundException
+     * @throws Exception
      */
     public static function create(Database $database, ?string $first_name, ?string $last_name, string $email, string $password): self
     {
         if(Email::exists($database, $email)) throw new ConflictException("E-Mail already exists.");
         if(!strlen($password) >= 8) throw new BadRequestException("Password is too short.");
-        $uuid = uniqid();
+        $uuid = bin2hex(random_bytes(16));
         $password = password_hash($password, PASSWORD_DEFAULT);
-        $query = "INSERT INTO ".$database->databaseTableConfig["ACCOUNTS"]."(uuid, first_name, last_name, email, confirmed, password) VALUES(:uuid, :first_name, :last_name, :email, false, :password)";
+        $query = "INSERT INTO ".$database->databaseTableConfig->tableKeys["ACCOUNTS"]."(uuid, first_name, last_name, email, confirmed, password) VALUES(:uuid, :first_name, :last_name, :email, false, :password)";
         $result = $database->execute($query, ["uuid" => $uuid, "first_name" => $first_name, "last_name" => $last_name, "email" => $email, "password" => $password]);
         if($result) {
             return self::fetch($database, $uuid);
@@ -70,7 +71,7 @@ class Account {
     public static function login(Database $database, string $email, string $password, ?MailClient $mailClient, ?int $code = 0): Token
     {
         if(!Email::exists($database, $email)) throw new ConflictException("Account doesn't exists.");
-        $query = "SELECT * FROM".$database->databaseTableConfig["ACCOUNTS"]." WHERE email = :email";
+        $query = "SELECT * FROM".$database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE email = :email";
         $result = $database->fetch($query, ["email" => $email]);
         if($result) {
             if(password_verify($password, $result->password)) {
@@ -81,10 +82,10 @@ class Account {
                 }
                 if(empty($code)) {
                     if(!empty($mailClient)) {
-                        $database->execute("DELETE FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE host = :host", ["host" => $request->ip]);
+                        $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["HOST_VERIFICATION"]." WHERE host = :host", ["host" => $request->ip]);
                         $account = self::fetch($database, $result->uuid);
                         $code = rand(100000, 999999);
-                        $query = "INSERT INTO ".$database->databaseTableConfig["HOST_VERIFICATION"]."(uuid, host, code, expires) VALUES(:uuid, :host, :code, NOW() + INTERVAL 10 MINUTE)";
+                        $query = "INSERT INTO ".$database->databaseTableConfig->tableKeys["HOST_VERIFICATION"]."(uuid, host, code, expires) VALUES(:uuid, :host, :code, NOW() + INTERVAL 10 MINUTE)";
                         $result = $database->execute($query, ["uuid" => $account->details->uuid, "host" => $request->ip, "code" => $code]);
                         if($result) {
                             $mailBody = "";
@@ -98,10 +99,10 @@ class Account {
                     } throw new BadRequestException("No mail client specified.");
                 }
 
-                $database->execute("DELETE FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE expires < NOW()");
-                $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE code = :code", ["code" => $code]);
+                $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["HOST_VERIFICATION"]." WHERE expires < NOW()");
+                $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig->tableKeys["HOST_VERIFICATION"]." WHERE code = :code", ["code" => $code]);
                 if($result) {
-                    $database->execute("DELETE FROM ".$database->databaseTableConfig["HOST_VERIFICATION"]." WHERE code = :code", ["code" => $code]);
+                    $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["HOST_VERIFICATION"]." WHERE code = :code", ["code" => $code]);
                     $account = self::fetch($database, $result->uuid);
                     $result = $account->addHost($result->host);
                     if($result) {
@@ -125,7 +126,7 @@ class Account {
             return true;
         }
 
-        $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
+        $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
         if($result) {
             $this->details->hosts = $hosts;
             return true;
@@ -144,7 +145,7 @@ class Account {
         $hosts = $this->details->hosts;
         if(in_array($host, $hosts)) {
             unset($hosts[$host]);
-            $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
+            $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
             if($result) {
                 $this->details->hosts = $hosts;
                 return true;
@@ -161,7 +162,7 @@ class Account {
      */
     public static function fetch(Database $database, string $uuid): self
     {
-        if($result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["ACCOUNTS"]." WHERE uuid = :uuid", ["uuid" => $uuid])) {
+        if($result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE uuid = :uuid", ["uuid" => $uuid])) {
             $details = Details::build($result);
 
             // Remove detail properties.
@@ -189,7 +190,7 @@ class Account {
     {
         if(!property_exists(Details::class, $property)) {
             if(!empty($value)) {
-                $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET $property = :value WHERE uuid = :uuid";
+                $query = "UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET $property = :value WHERE uuid = :uuid";
                 $result = $this->database->execute($query, ["value" => $value, "uuid" => $this->details->uuid]);
                 if($result) {
                     $this->data->$property = $value;
@@ -209,7 +210,7 @@ class Account {
     public function clearProperty(string $property): bool
     {
         if(!property_exists(Details::class, $property)) {
-            $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET $property = null WHERE uuid = :uuid";
+            $query = "UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET $property = null WHERE uuid = :uuid";
             $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
             if($result) {
                 unset($this->data->$property);
@@ -229,7 +230,7 @@ class Account {
     public function getProperty(string $property): mixed
     {
         if(!property_exists(Details::class, $property)) {
-            $query = "SELECT * FROM ".$this->database->databaseTableConfig["ACCOUNTS"]." WHERE uuid = :uuid";
+            $query = "SELECT * FROM ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE uuid = :uuid";
             $result = $this->database->fetch($query, ["uuid" => $this->details->uuid]);
             if($result) {
                 return $result->$property;
@@ -248,7 +249,7 @@ class Account {
     public function setEmail(string $email): bool
     {
         if(!Email::exists($this->database, $email)) throw new ConflictException("E-Mail already exists.");
-        $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET email = :email WHERE uuid = :uuid";
+        $query = "UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET email = :email WHERE uuid = :uuid";
         $result = $this->database->execute($query, ["email" => $email, "uuid" => $this->details->uuid]);
         if($result) {
             $this->details->email = $email;
@@ -267,7 +268,7 @@ class Account {
     {
         if(!strlen($password) >= 8) throw new BadRequestException("Password is too short.");
         $password = password_hash($password, PASSWORD_DEFAULT);
-        $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET password = :email WHERE uuid = :uuid";
+        $query = "UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET password = :email WHERE uuid = :uuid";
         $result = $this->database->execute($query, ["password" => $password, "uuid" => $this->details->uuid]);
         if($result) {
             $this->details->password = $password;
@@ -289,11 +290,11 @@ class Account {
     {
         if($this->details->confirmed) throw new ConflictException("E-Mail already confirmed.");
         if(empty($code)) {
-            $query = "DELETE FROM ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]." WHERE email : email";
+            $query = "DELETE FROM ".$this->database->databaseTableConfig->tableKeys["MAIL_VERIFICATION"]." WHERE email : email";
             $this->database->execute($query, ["email" => $this->details->email]);
             if(empty($mailClient)) throw new InternalServerException("No mail client specified.");
             $confirmation_code = rand(100000, 999999);
-            $query = "INSERT INTO ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]."(email, code) VALUES(:email, :code)";
+            $query = "INSERT INTO ".$this->database->databaseTableConfig->tableKeys["MAIL_VERIFICATION"]."(email, code) VALUES(:email, :code)";
             $result = $this->database->execute($query, ["email" => $this->details->email, "code" => $confirmation_code]);
             if($result) {
                 $mailBody = "";
@@ -305,14 +306,14 @@ class Account {
             } throw new InternalServerException("Couldn't confirm email.");
         }
 
-        $query = "SELECT * FROM ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]." WHERE email = :email";
+        $query = "SELECT * FROM ".$this->database->databaseTableConfig->tableKeys["MAIL_VERIFICATION"]." WHERE email = :email";
         $result = $this->database->fetch($query, ["email" => $this->details->email]);
         if($result) {
             if($code == $result->code) {
-                $query = "DELETE FROM ".$this->database->databaseTableConfig["MAIL_VERIFICATION"]." WHERE email : email";
+                $query = "DELETE FROM ".$this->database->databaseTableConfig->tableKeys["MAIL_VERIFICATION"]." WHERE email : email";
                 $this->database->execute($query, ["email" => $this->details->email]);
 
-                $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET confirmed = true WHERE uuid = :uuid";
+                $query = "UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET confirmed = true WHERE uuid = :uuid";
                 $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
                 if($result) {
                     $this->details->confirmed = true;
@@ -329,7 +330,7 @@ class Account {
      */
     public function unconfirm(): bool
     {
-        $query = "UPDATE ".$this->database->databaseTableConfig["ACCOUNTS"]." SET confirmed = false WHERE uuid = :uuid";
+        $query = "UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET confirmed = false WHERE uuid = :uuid";
         $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
         if($result) {
             $this->details->confirmed = false;
@@ -358,10 +359,10 @@ class Account {
             if(!empty($mailClient)) {
                 if(!empty($uuid)) {
                     if(!empty($referrer)) {
-                        $database->execute("DELETE FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $uuid]);
+                        $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["RESET_PASSWORD_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $uuid]);
 
                         $token = bin2hex(random_bytes(32));
-                        $query = "INSERT INTO ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]."(uuid, token, expires) VALUES(:uuid, :token, NOW() + INTERVAL 10 MINUTE)";
+                        $query = "INSERT INTO ".$database->databaseTableConfig->tableKeys["RESET_PASSWORD_TOKENS"]."(uuid, token, expires) VALUES(:uuid, :token, NOW() + INTERVAL 10 MINUTE)";
                         $result = $database->execute($query, ["uuid" => $uuid, "token" => $token]);
                         if($result) {
                             $account = self::fetch($database, $uuid);
@@ -379,10 +380,10 @@ class Account {
         }
         if(!empty($password)) {
             if(strlen($password) >= 8) {
-                $database->execute("DELETE FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE expires < NOW()");
-                $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE token = :token", ["token" => $token]);
+                $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["RESET_PASSWORD_TOKENS"]." WHERE expires < NOW()");
+                $result = $database->fetch("SELECT * FROM ".$database->databaseTableConfig->tableKeys["RESET_PASSWORD_TOKENS"]." WHERE token = :token", ["token" => $token]);
                 if($result) {
-                    $database->execute("DELETE FROM ".$database->databaseTableConfig["RESET_PASSWORD_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $uuid]);
+                    $database->execute("DELETE FROM ".$database->databaseTableConfig->tableKeys["RESET_PASSWORD_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $uuid]);
                     $account = self::fetch($database, $result->uuid);
                     return $account->setPassword($password);
                 } throw new UnauthorizedException("Invalid password reset token.");
@@ -409,10 +410,10 @@ class Account {
             if(!empty($mailClient)) {
                 if(!empty($referrer)) {
                     if(!Email::exists($this->database, $new_email)) {
-                        $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $this->details->uuid]);
+                        $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig->tableKeys["CHANGE_EMAIL_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $this->details->uuid]);
 
                         $token = bin2hex(random_bytes(32));
-                        $query = "INSERT INTO ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]."(uuid, token, new_email, expires) VALUES(:uuid, :token, :new_email, NOW() + INTERVAL 10 MINUTE)";
+                        $query = "INSERT INTO ".$this->database->databaseTableConfig->tableKeys["CHANGE_EMAIL_TOKENS"]."(uuid, token, new_email, expires) VALUES(:uuid, :token, :new_email, NOW() + INTERVAL 10 MINUTE)";
                         $result = $this->database->execute($query, ["uuid" => $this->details->uuid, "token" => $token, "new_email" => $new_email]);
                         if($result) {
                             $mailBody = "";
@@ -427,12 +428,12 @@ class Account {
                 } throw new BadRequestException("No Referrer given.");
             } throw new BadRequestException("No mail client specified.");
         }
-        $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE expires < NOW()");
-        $result = $this->database->fetch("SELECT * FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE token = :token", ["token" => $token]);
+        $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig->tableKeys["CHANGE_EMAIL_TOKENS"]." WHERE expires < NOW()");
+        $result = $this->database->fetch("SELECT * FROM ".$this->database->databaseTableConfig->tableKeys["CHANGE_EMAIL_TOKENS"]." WHERE token = :token", ["token" => $token]);
         if($result) {
             $result = self::setEmail($result->new_email);
             if($result) {
-                $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig["CHANGE_EMAIL_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $this->details->uuid]);
+                $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig->tableKeys["CHANGE_EMAIL_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $this->details->uuid]);
                 return true;
             } throw new InternalServerException("Couldn't set email.");
         } throw new UnauthorizedException("Invalid change email token.");
