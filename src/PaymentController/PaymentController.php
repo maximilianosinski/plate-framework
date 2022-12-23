@@ -1,8 +1,8 @@
 <?php
-namespace Plate\PlateFramework\PaymentController;
+namespace PlatePHP\PlateFramework\PaymentController;
 
-use Plate\PlateFramework\Exceptions\BadRequestException;
-use Plate\PlateFramework\Exceptions\InternalServerException;
+use PlatePHP\PlateFramework\Exceptions\BadRequestException;
+use PlatePHP\PlateFramework\Exceptions\InternalServerException;
 
 class PaymentController {
     private string $token;

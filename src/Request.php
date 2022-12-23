@@ -1,5 +1,5 @@
 <?php
-namespace Plate\PlateFramework;
+namespace PlatePHP\PlateFramework;
 
 class Request {
     public string $ip;

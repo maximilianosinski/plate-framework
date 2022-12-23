@@ -1,5 +1,5 @@
 <?php
-namespace Plate\PlateFramework\PaymentController;
+namespace PlatePHP\PlateFramework\PaymentController;
 
 class OrderResponse {
     public string $status;

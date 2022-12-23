@@ -1,5 +1,5 @@
 <?php
-namespace Plate\PlateFramework;
+namespace PlatePHP\PlateFramework;
 
 class Response {
     public int $status;

@@ -5,7 +5,7 @@
     "license": "Apache-2.0 license",
     "autoload": {
         "psr-4": {
-            "Plate\\PlateFramework\\": "src/"
+            "PlatePHP\\PlateFramework\\": "src/"
         }
     },
     "authors": [

@@ -1,20 +1,20 @@
 <?php
-namespace Plate\PlateFramework\Account;
+namespace PlatePHP\PlateFramework\Account;
 
 use Exception;
-use Plate\PlateFramework\Authentication\Token;
-use Plate\PlateFramework\Database;
-use Plate\PlateFramework\Exceptions\BadRequestException;
-use Plate\PlateFramework\Exceptions\ConflictException;
-use Plate\PlateFramework\Exceptions\ForbiddenException;
-use Plate\PlateFramework\Exceptions\InternalServerException;
-use Plate\PlateFramework\Exceptions\NotFoundException;
-use Plate\PlateFramework\Exceptions\UnauthorizedException;
-use Plate\PlateFramework\MailChangedResult;
-use Plate\PlateFramework\MailClient;
-use Plate\PlateFramework\MailConfirmResult;
-use Plate\PlateFramework\PasswordChangedResult;
-use Plate\PlateFramework\Request;
+use PlatePHP\PlateFramework\Authentication\Token;
+use PlatePHP\PlateFramework\Database;
+use PlatePHP\PlateFramework\Exceptions\BadRequestException;
+use PlatePHP\PlateFramework\Exceptions\ConflictException;
+use PlatePHP\PlateFramework\Exceptions\ForbiddenException;
+use PlatePHP\PlateFramework\Exceptions\InternalServerException;
+use PlatePHP\PlateFramework\Exceptions\NotFoundException;
+use PlatePHP\PlateFramework\Exceptions\UnauthorizedException;
+use PlatePHP\PlateFramework\MailChangedResult;
+use PlatePHP\PlateFramework\MailClient;
+use PlatePHP\PlateFramework\MailConfirmResult;
+use PlatePHP\PlateFramework\PasswordChangedResult;
+use PlatePHP\PlateFramework\Request;
 
 class Account {
 

@@ -1,9 +1,9 @@
 <?php
-namespace Plate\PlateFramework\Authentication;
+namespace PlatePHP\PlateFramework\Authentication;
 
 use Exception;
-use Plate\PlateFramework\Database;
-use Plate\PlateFramework\Exceptions\UnauthorizedException;
+use PlatePHP\PlateFramework\Database;
+use PlatePHP\PlateFramework\Exceptions\UnauthorizedException;
 
 class Token {
     private Database $database;

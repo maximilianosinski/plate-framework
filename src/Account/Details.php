@@ -1,5 +1,5 @@
 <?php
-namespace Plate\PlateFramework\Account;
+namespace PlatePHP\PlateFramework\Account;
 
 class Details {
 

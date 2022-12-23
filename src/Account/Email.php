@@ -1,9 +1,9 @@
 <?php
-namespace Plate\PlateFramework\Account;
+namespace PlatePHP\PlateFramework\Account;
 
-use Plate\PlateFramework\Database;
-use Plate\PlateFramework\Exceptions\BadRequestException;
-use Plate\PlateFramework\Exceptions\NotFoundException;
+use PlatePHP\PlateFramework\Database;
+use PlatePHP\PlateFramework\Exceptions\BadRequestException;
+use PlatePHP\PlateFramework\Exceptions\NotFoundException;
 
 class Email {
 

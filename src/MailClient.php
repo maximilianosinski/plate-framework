@@ -1,8 +1,8 @@
 <?php
-namespace Plate\PlateFramework;
+namespace PlatePHP\PlateFramework;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-use Plate\PlateFramework\Exceptions\InternalServerException;
+use PlatePHP\PlateFramework\Exceptions\InternalServerException;
 
 class MailClient {
     public string $host;

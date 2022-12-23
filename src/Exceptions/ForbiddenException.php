@@ -1,5 +1,5 @@
 <?php
-namespace Plate\PlateFramework\Exceptions;
+namespace PlatePHP\PlateFramework\Exceptions;
 
 use Exception;
 use Throwable;
