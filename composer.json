@@ -1,5 +1,5 @@
 {
-    "name": "plate/plate-framework",
+    "name": "platephp/plate-framework",
     "description": "Plate is a PHP framework for making fast & reliable REST API's.",
     "type": "library",
     "license": "Apache-2.0 license",
