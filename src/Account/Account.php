@@ -10,7 +10,9 @@ use Plate\PlateFramework\Exceptions\ForbiddenException;
 use Plate\PlateFramework\Exceptions\InternalServerException;
 use Plate\PlateFramework\Exceptions\NotFoundException;
 use Plate\PlateFramework\Exceptions\UnauthorizedException;
+use Plate\PlateFramework\MailChangedResult;
 use Plate\PlateFramework\MailClient;
+use Plate\PlateFramework\MailConfirmResult;
 use Plate\PlateFramework\Request;
 
 class Account {
@@ -71,7 +73,7 @@ class Account {
     public static function login(Database $database, string $email, string $password, ?MailClient $mailClient, ?int $code = 0): Token
     {
         if(!Email::exists($database, $email)) throw new ConflictException("Account doesn't exists.");
-        $query = "SELECT * FROM".$database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE email = :email";
+        $query = "SELECT * FROM ".$database->databaseTableConfig->tableKeys["ACCOUNTS"]." WHERE email = :email";
         $result = $database->fetch($query, ["email" => $email]);
         if($result) {
             if(password_verify($password, $result->password)) {
@@ -124,6 +126,8 @@ class Account {
         $hosts = $this->details->hosts;
         if(in_array($host, $hosts)) {
             return true;
+        } else {
+            $hosts[] = $host;
         }
 
         $result = $this->database->execute("UPDATE ".$this->database->databaseTableConfig->tableKeys["ACCOUNTS"]." SET hosts = :hosts", ["hosts" => json_encode($hosts)]);
@@ -280,13 +284,13 @@ class Account {
      * Confirm the current email address.
      * @param MailClient|null $mailClient
      * @param int|null $code
-     * @return bool
+     * @return MailConfirmResult
      * @throws ConflictException
      * @throws ForbiddenException
      * @throws InternalServerException
      * @throws NotFoundException
      */
-    public function confirm(?MailClient $mailClient, ?int $code = 0): bool
+    public function confirm(?MailClient $mailClient, ?int $code = 0): MailConfirmResult
     {
         if($this->details->confirmed) throw new ConflictException("E-Mail already confirmed.");
         if(empty($code)) {
@@ -302,7 +306,10 @@ class Account {
                     $mailBody .= "Hello ".$this->details->first_name." ".$this->details->last_name.",\n";
                 }
                 $mailBody .= "<p>To confirm your email address enter the following code.<br><strong style='font-size: large'>$confirmation_code</strong></p>.";
-                return $mailClient->sendMail($this->details->email, "Confirm your E-Mail address.", $mailBody);
+                $result = $mailClient->sendMail($this->details->email, "Confirm your E-Mail address.", $mailBody);
+                if($result) {
+                    return new MailConfirmResult(false, true);
+                } throw new InternalServerException("Couldn't sent confirmation email.");
             } throw new InternalServerException("Couldn't confirm email.");
         }
 
@@ -317,7 +324,7 @@ class Account {
                 $result = $this->database->execute($query, ["uuid" => $this->details->uuid]);
                 if($result) {
                     $this->details->confirmed = true;
-                    return true;
+                    return new MailConfirmResult(true, false);
                 } throw new InternalServerException("Couldn't confirm email address.");
             } throw new ForbiddenException("Invalid confirmation code.");
         } throw new NotFoundException("No valid confirmation code found.");
@@ -397,14 +404,13 @@ class Account {
      * @param string|null $referrer
      * @param string|null $token
      * @param string|null $new_email
-     * @return bool
+     * @return MailChangedResult
      * @throws BadRequestException
      * @throws ConflictException
      * @throws InternalServerException
      * @throws UnauthorizedException
-     * @throws Exception
      */
-    public function changeEmail(?MailClient $mailClient, ?string $referrer, ?string $token, ?string $new_email): bool
+    public function changeEmail(?MailClient $mailClient, ?string $referrer, ?string $token, ?string $new_email): MailChangedResult
     {
         if(empty($token)) {
             if(!empty($mailClient)) {
@@ -422,7 +428,10 @@ class Account {
                             }
                             $link = "$referrer?token=$token";
                             $mailBody .= "<p>To change your email address to, click the following link.<br><a href='$link'>$link</a></p>.";
-                            return $mailClient->sendMail($new_email, "Change your email.", $mailBody);
+                            $result = $mailClient->sendMail($new_email, "Change your email.", $mailBody);
+                            if($result) {
+                                return new MailChangedResult(false, true);
+                            } throw new InternalServerException("Couldn't sent confirmation email.");
                         } throw new InternalServerException("Couldn't create change email token.");
                     } throw new BadRequestException("Invalid email address.");
                 } throw new BadRequestException("No Referrer given.");
@@ -434,7 +443,7 @@ class Account {
             $result = self::setEmail($result->new_email);
             if($result) {
                 $this->database->execute("DELETE FROM ".$this->database->databaseTableConfig->tableKeys["CHANGE_EMAIL_TOKENS"]." WHERE uuid = :uuid", ["uuid" => $this->details->uuid]);
-                return true;
+                return new MailChangedResult(true, false);
             } throw new InternalServerException("Couldn't set email.");
         } throw new UnauthorizedException("Invalid change email token.");
     }

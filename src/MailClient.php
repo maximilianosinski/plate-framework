@@ -1,11 +1,8 @@
 <?php
 namespace Plate\PlateFramework;
-
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Plate\PlateFramework\Exceptions\InternalServerException;
-
-require_once 'vendor/autoload.php';
 
 class MailClient {
     public string $host;
