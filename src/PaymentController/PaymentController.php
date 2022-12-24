@@ -71,9 +71,9 @@ class PaymentController {
     {
         $trailing = "";
         if($capture) {
-            $trailing = "capture";
+            $trailing = "/capture";
         }
-        $url = "https://api-m$this->environment.paypal.com/v2/checkout/orders/$order_token/$trailing";
+        $url = "https://api-m$this->environment.paypal.com/v2/checkout/orders/$order_token$trailing";
         $curl = curl_init($url);
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
@@ -83,6 +83,9 @@ class PaymentController {
             "Authorization: Bearer $this->token"
         );
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+        if($capture) {
+            curl_setopt($curl, CURLOPT_POSTFIELDS, array());
+        }
         $resp = curl_exec($curl);
         curl_close($curl);
         $json = json_decode($resp, true);

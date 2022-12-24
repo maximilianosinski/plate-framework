@@ -178,6 +178,7 @@ class Account {
             unset($result->confirmed);
             unset($result->password);
             unset($result->hosts);
+            unset($result->id);
 
             return new self($database, $details, $result);
         } throw new NotFoundException("Account doesn't exist.");
